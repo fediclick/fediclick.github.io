@@ -54,10 +54,6 @@
                         </nav></header>
                     `
                 }),
-                Home = defineComponent({
-                    template: `
-                    `
-                }),
                 Settings = defineComponent({
                     components: {
                         Header
@@ -85,7 +81,7 @@
             app.use(createRouter({
                 history: createWebHashHistory(),
                 routes: [
-                    { path: '/', component: Home },
+                    { path: '/', redirect: '/about' },
                     { path: '/settings', component: Settings },
                     { path: '/about', component: About }
                 ]
