@@ -14,7 +14,7 @@
 
             body > header, body > main { padding-block: 0; }
             nav li { padding-top: 0; }
-            h1, p, fieldset, input, label, details { margin: 0 !important; }
+            h1, h2, p, fieldset, input, label, details { margin: 0 !important; }
             label { display: unset; }
 
             .app {
@@ -26,6 +26,26 @@
             .header {
                 border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             }
+            .redirector {
+                display: flex;
+                flex-direction: column;
+                row-gap: 1rem;
+            }
+            .redirector__form {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 1rem;
+                align-items: center;
+            }
+            .redirector__form__label {
+                grid-column: 1 / 2;
+            }
+            .redirector__form__input {
+                grid-column: 2 / 3;
+            }
+            .redirector__form__submit {
+                grid-column: 1 / 3;
+            }
         </style>
         <script type="importmap">
             {
@@ -33,12 +53,16 @@
                     "vue": "https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.js",
                     "vue-router": "https://cdn.jsdelivr.net/npm/vue-router@4/dist/vue-router.esm-browser.js",
                     "@vue/devtools-api": "https://cdn.jsdelivr.net/npm/@vue/devtools-api@7/+esm",
+                    "axios": "https://cdn.jsdelivr.net/npm/axios@1.10/dist/esm/axios.min.js"
                 }
             }
         </script>
         <script type="module">
             import { createApp, defineComponent } from 'vue';
             import { createRouter, createWebHashHistory } from 'vue-router';
+            import axios from 'axios';
+
+            axios.defaults.adapter = 'fetch';
 
             const
                 Header = defineComponent({
@@ -73,6 +97,110 @@
                         </main>
                     `
                 }),
+                Redirector = defineComponent({
+                    components: {
+                        Header
+                    },
+                    data: () => ({
+                        isLoading: true,
+                        remoteSoftware: undefined,
+                        localHost: undefined,
+                        localHostInput: document.referrer ? new URL(document.referrer).host : undefined,
+                        localSoftware: undefined
+                    }),
+                    computed: {
+                        remoteHost: function(){
+                            return this.$route.params.host;
+                        },
+                        remotePathParams: function(){
+                            return this.$route.params.path;
+                        },
+                        remotePath: function(){
+                            return this.remotePathParams.join('/');
+                        },
+                        remoteUrl: function(){
+                            return `https://${this.remoteHost}/${this.remotePath}`;
+                        },
+                        localUrl: function(){
+                            return this.localHost ? {
+                                'lemmy': `https://${this.localHost}/search?q=${encodeURIComponent(this.remoteUrl)}&type=Posts`
+                            }[this.localSoftware] : undefined;
+                        }
+                    },
+                    methods: {
+                        getSoftware: async function(host){
+                            const softwareCache = JSON.parse(localStorage.getItem('softwareCache') || '{}');
+                            if(softwareCache[host])
+                                return softwareCache[host];
+                            const
+                                nodeInfoEndpoint = (await axios(`https://${host}/.well-known/nodeinfo`)).data['links'][0]['href'],
+                                software = (await axios(nodeInfoEndpoint)).data['software']['name'];
+                            softwareCache[host] = software;
+                            localStorage.setItem('softwareCache', JSON.stringify(softwareCache));
+                            return software;
+                        },
+                        loadLocalHost: function(){
+                            this.localHost = JSON.parse(localStorage.getItem('localHostCache') || '{}')[this.remoteSoftware];
+                        },
+                        saveLocalHost: function(){
+                            localStorage.setItem(
+                                'localHostCache',
+                                JSON.stringify({
+                                    ...JSON.parse(localStorage.getItem('localHostCache') || '{}'),
+                                    [this.remoteSoftware]: this.localHost
+                                })
+                            );
+                        },
+                        submitLocalHost: async function(){
+                            this.isLoading = true;
+                            this.localHost = this.localHostInput;
+                            this.saveLocalHost();
+                            this.localSoftware = await this.getSoftware(this.localHost);
+                            window.location.assign(this.localUrl);
+                        }
+                    },
+                    mounted: async function(){
+                        this.remoteSoftware = await this.getSoftware(this.remoteHost);
+                        this.loadLocalHost();
+                        if(this.localHost){
+                            this.localSoftware = await this.getSoftware(this.localHost);
+                            return window.location.assign(this.localUrl);
+                        }
+                        this.isLoading = false;
+                    },
+                    template: `
+                        <Header />
+                        <main class="redirector">
+                            <p v-if="isLoading">Loading...</p>
+                            <template v-else>
+                                <h2>Where's your {{ remoteSoftware }} home ?</h2>
+                                <p>
+                                    Choose which instance you want to open {{ remoteSoftware }} links with.
+                                    <br>
+                                    It doesn't necessarily have to be a {{ remoteSoftware }} instance.
+                                </p>
+                                <form
+                                    @submit.prevent="submitLocalHost"
+                                    class="redirector__form"
+                                >
+                                    <label style="display: contents">
+                                        <span class="redirector__form__label">Local host :</span>
+                                        <input
+                                            class="redirector__form__input"
+                                            v-model="localHostInput"
+                                            type="text"
+                                        >
+                                    </label>
+                                    <input
+                                        class="redirector__form__submit"
+                                        type="submit"
+                                        value="Submit"
+                                    >
+                                </form>
+                            </template>
+                        </main>
+                    `
+                }),
                 app = createApp({
                     template: `
                         <router-view></router-view>
@@ -83,7 +211,8 @@
                 routes: [
                     { path: '/', redirect: '/about' },
                     { path: '/settings', component: Settings },
-                    { path: '/about', component: About }
+                    { path: '/about', component: About },
+                    { path: '/:host/:path*', component: Redirector }
                 ]
             }));
             document.addEventListener('DOMContentLoaded', () => app.mount(document.body));
