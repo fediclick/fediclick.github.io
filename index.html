@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="darkreader-lock">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css">
+        <title>fediclick</title>
+        <style>
+            :root {
+                color-scheme: dark;
+            }
+
+            body > header, body > main { padding-block: 0; }
+            nav li { padding-top: 0; }
+            h1, p, fieldset, input, label, details { margin: 0 !important; }
+            label { display: unset; }
+
+            .app {
+                padding: 1rem;
+                display: flex;
+                flex-direction: column;
+                row-gap: 1rem;
+            }
+            .header {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        </style>
+        <script type="importmap">
+            {
+                "imports": {
+                    "vue": "https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.js",
+                    "vue-router": "https://cdn.jsdelivr.net/npm/vue-router@4/dist/vue-router.esm-browser.js",
+                    "@vue/devtools-api": "https://cdn.jsdelivr.net/npm/@vue/devtools-api@6.4.5/lib/esm/index.js"
+                }
+            }
+        </script>
+        <script type="module">
+            import { createApp, defineComponent } from 'vue';
+            import { createRouter, createWebHashHistory } from 'vue-router';
+
+            const
+                Header = defineComponent({
+                    template: `
+                        <header class="header"><nav>
+                            <ul><li>
+                                <strong>fediclick</strong>
+                            </li></ul>
+                            <ul>
+                                <li><router-link to="/settings">Settings</router-link></li>
+                                <li><router-link to="/about">About</router-link></li>
+                            </ul>
+                        </nav></header>
+                    `
+                }),
+                Home = defineComponent({
+                    template: `
+                    `
+                }),
+                Settings = defineComponent({
+                    components: {
+                        Header
+                    },
+                    template: `
+                        <Header />
+                    `
+                }),
+                About = defineComponent({
+                    components: {
+                        Header
+                    },
+                    template: `
+                        <Header />
+                        <main>
+                            <p>fediclick is a universal link redirector for the Fediverse.</p>
+                        </main>
+                    `
+                }),
+                app = createApp({
+                    template: `
+                        <router-view></router-view>
+                    `
+                });
+            app.use(createRouter({
+                history: createWebHashHistory(),
+                routes: [
+                    { path: '/', component: Home },
+                    { path: '/settings', component: Settings },
+                    { path: '/about', component: About }
+                ]
+            }));
+            document.addEventListener('DOMContentLoaded', () => app.mount(document.body));
+        </script>
+    </head>
+    <body class="app"></body>
+</html>
