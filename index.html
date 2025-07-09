@@ -121,6 +121,11 @@
                         remoteUrl: function(){
                             return `https://${this.remoteHost}/${this.remotePath}`;
                         },
+                        localHostInputPlaceholder: function(){
+                            return {
+                                'lemmy': 'lemmy.ml'
+                            }[this.remoteSoftware];
+                        },
                         localUrl: function(){
                             return this.localHost ? {
                                 'lemmy': `https://${this.localHost}/search?q=${encodeURIComponent(this.remoteUrl)}&type=Posts`
@@ -189,6 +194,8 @@
                                             class="redirector__form__input"
                                             v-model="localHostInput"
                                             type="text"
+                                            :placeholder="localHostInputPlaceholder"
+                                            autofocus
                                         >
                                     </label>
                                     <input
